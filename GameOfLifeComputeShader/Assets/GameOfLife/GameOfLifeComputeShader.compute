@@ -8,13 +8,8 @@ RWTexture2D<float4> textureBufferOut;
 // 乱数生成するCompute shader
 int Seed;
 float Density;
-float4 living;
-float4 die;
-
-bool Float4Equals(float4 a, float4 b)
-{
-	return (a.x == b.x) && (a.y == b.y) && (a.z == b.z) && (a.w == b.w);
-}
+float4 aliveColor;
+float4 dieColor;
 
 float GetRandomNumber(float2 texCoord, int Seed)
 {
@@ -50,8 +45,8 @@ void GenerateRandomTexture(uint3 dispatchThreadID : SV_DispatchThreadID)
 [numthreads(8, 8, 1)]
 void LifeGame(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
-    float4 living = float4(1,1,1,1);
-    float4 die = float4(0,0,0,1);
+    float4 alive = float4(1, 1, 1, 1);
+    float4 die = float4(0, 0, 0, 1);
 
     float4 nowGen = textureBufferIn[float2(dispatchThreadID.x,dispatchThreadID.y)]; 
     float4 nextGen;
@@ -83,9 +78,9 @@ void LifeGame(uint3 dispatchThreadID : SV_DispatchThreadID)
 
 	nextGen = die;
 
-	if( ( (Float4Equals(nowGen,living) && (aloundLives == 2) ) || (aloundLives == 3) ) )
+	if( ( (nowGen.x == alive.x) && (aloundLives == 2) ) || (aloundLives == 3) )
 	{
-		nextGen = living;
+		nextGen = alive;
 	}
     textureBufferOut[dispatchThreadID.xy] = nextGen;
 }
@@ -94,5 +89,13 @@ void LifeGame(uint3 dispatchThreadID : SV_DispatchThreadID)
 [numthreads(8, 8, 1)]
 void FlipBuffer(uint3 dispatchThreadID : SV_DispatchThreadID)
 {
+    float4 alive = float4(1, 1, 1, 1);
 	textureBufferIn[dispatchThreadID.xy] = textureBufferOut[dispatchThreadID.xy];
+
+    if( textureBufferOut[dispatchThreadID.xy].x == alive.x)
+    {
+        textureBufferOut[dispatchThreadID.xy] = aliveColor;
+    }else{
+        textureBufferOut[dispatchThreadID.xy] = dieColor;
+    }
 }

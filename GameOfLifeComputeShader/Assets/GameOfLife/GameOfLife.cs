@@ -8,6 +8,9 @@ public class GameOfLife : MonoBehaviour {
 
     public ComputeShader computeShader;
 
+    public Color aliveColor = Color.white;
+    public Color dieColor = Color.black;
+
     [Range(1, 20)]
     public int speed = 1;
 
@@ -99,6 +102,9 @@ public class GameOfLife : MonoBehaviour {
         // 初期設定
         this.computeShader.SetInt("Seed", (int)Time.time);
         this.computeShader.SetFloat("Density", 0.4f);
+        this.computeShader.SetFloats("aliveColor", new float[] { aliveColor.r, aliveColor.g, aliveColor.b, aliveColor.a });
+        this.computeShader.SetFloats("dieColor", new float[] { dieColor.r, dieColor.g, dieColor.b, dieColor.a });
+
 
         this.computeShader.Dispatch(this.kernelIndex_GenerateRandomTexture,
                                     this.renderTextureIn.width / this.kernelThreadSize_GenerateRandomTexture.x,
