@@ -11,8 +11,16 @@ public class GameOfLife : MonoBehaviour {
     public Color aliveColor = Color.white;
     public Color dieColor = Color.black;
 
+    public Texture inputTexture;
+
+    [Range(0.01f, 1.0f)]
+    public float density = 0.4f;
+
     [Range(1, 20)]
     public int speed = 1;
+
+    [Range(64, 16284)]
+    public int size = 1024;
 
     RenderTexture renderTextureIn;
     RenderTexture renderTextureOut;
@@ -41,11 +49,24 @@ public class GameOfLife : MonoBehaviour {
 
     // Use this for initialization
     void Start () {
-        int size = 8192;// 5120;
+
+        int width = size;
+        int height = size;
+
+        if(inputTexture)
+        {
+            width = inputTexture.width;
+            height = inputTexture.height;
+        }
+
+        if(targetMaterial==null)
+        {
+            targetMaterial = gameObject.GetComponent<Renderer>().material;
+        }
 
         // renderTextureの生成
-        this.renderTextureIn  = new RenderTexture(size, size, 0, RenderTextureFormat.ARGB32);
-        this.renderTextureOut = new RenderTexture(size, size, 0, RenderTextureFormat.ARGB32);
+        this.renderTextureIn  = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32);
+        this.renderTextureOut = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB32);
         this.renderTextureIn.enableRandomWrite  = true;
         this.renderTextureOut.enableRandomWrite = true;
         this.renderTextureIn.Create();
@@ -101,15 +122,24 @@ public class GameOfLife : MonoBehaviour {
 
         // 初期設定
         this.computeShader.SetInt("Seed", (int)Time.time);
-        this.computeShader.SetFloat("Density", 0.4f);
+        this.computeShader.SetFloat("Density", density);
         this.computeShader.SetFloats("aliveColor", new float[] { aliveColor.r, aliveColor.g, aliveColor.b, aliveColor.a });
         this.computeShader.SetFloats("dieColor", new float[] { dieColor.r, dieColor.g, dieColor.b, dieColor.a });
 
+        if( inputTexture)
+        {
 
-        this.computeShader.Dispatch(this.kernelIndex_GenerateRandomTexture,
-                                    this.renderTextureIn.width / this.kernelThreadSize_GenerateRandomTexture.x,
-                                    this.renderTextureIn.height / this.kernelThreadSize_GenerateRandomTexture.y,
-                                    this.kernelThreadSize_GenerateRandomTexture.z);
+            //メインテクスチャのコピー
+            Graphics.Blit(inputTexture, this.renderTextureIn);
+        }
+        else
+        {
+            this.computeShader.Dispatch(this.kernelIndex_GenerateRandomTexture,
+                                        this.renderTextureIn.width / this.kernelThreadSize_GenerateRandomTexture.x,
+                                        this.renderTextureIn.height / this.kernelThreadSize_GenerateRandomTexture.y,
+                                        this.kernelThreadSize_GenerateRandomTexture.z);
+
+        }
         targetMaterial.mainTexture = this.renderTextureIn;
     }
 
