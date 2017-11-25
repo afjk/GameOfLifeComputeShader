@@ -3,7 +3,7 @@ Game of life implemented with compute shader.
 
 *Generate random pattern.
 
-*Read pattern from texture.
+*Read pattern from texture(Only black and white binary,Multiplier of 2 squire size).
 
 Texture data in resource folder are screen captured from Golly.
 
