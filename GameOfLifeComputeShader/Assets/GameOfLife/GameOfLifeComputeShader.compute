@@ -1,0 +1,98 @@
+﻿#pragma kernel GenerateRandomTexture
+#pragma kernel LifeGame
+#pragma kernel FlipBuffer
+
+RWTexture2D<float4> textureBufferIn;
+RWTexture2D<float4> textureBufferOut;
+
+// 乱数生成するCompute shader
+int Seed;
+float Density;
+float4 living;
+float4 die;
+
+bool Float4Equals(float4 a, float4 b)
+{
+	return (a.x == b.x) && (a.y == b.y) && (a.z == b.z) && (a.w == b.w);
+}
+
+float GetRandomNumber(float2 texCoord, int Seed)
+{
+//    return frac(sin(dot(texCoord.xy, float2(12.9898, 78.233)) + Seed) * 43758.5453);
+	float result = frac(sin(dot(texCoord.xy, float2(12.9898, 78.233)) + Seed) * 43758.5453);
+	if (result < Density)
+	{
+		result = 1;
+	}
+	else
+	{
+		result = 0;
+	}
+	return result;
+}
+ 
+float4 MakeNoiseColor(float2 texCoord)
+{
+    float value = GetRandomNumber(texCoord, Seed);
+    return float4(value, value, value, 1);
+}
+
+[numthreads(8, 8, 1)]
+void GenerateRandomTexture(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+	float width, height;
+	textureBufferIn.GetDimensions(width, height);
+
+    textureBufferIn[dispatchThreadID.xy] = MakeNoiseColor(float2(dispatchThreadID.x,dispatchThreadID.y));
+}
+
+// Life Game実行部分
+[numthreads(8, 8, 1)]
+void LifeGame(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    float4 living = float4(1,1,1,1);
+    float4 die = float4(0,0,0,1);
+
+    float4 nowGen = textureBufferIn[float2(dispatchThreadID.x,dispatchThreadID.y)]; 
+    float4 nextGen;
+    float width, height;
+    textureBufferIn.GetDimensions(width, height);
+
+    int preX = dispatchThreadID.x-1;
+	int nowX = dispatchThreadID.x;
+    int postX = dispatchThreadID.x+1;
+    int preY = dispatchThreadID.y-1;
+	int nowY = dispatchThreadID.y;
+    int postY = dispatchThreadID.y+1;
+
+	// 画面端でループ
+    if( preX < 0) preX = width - 1;
+    if( postX == width ) postX = 0;
+    if( preY < 0) preY = height - 1;
+    if( postY == height ) postY = 0;
+
+	int aloundLives = 0;
+	aloundLives += textureBufferIn[float2(preX,preY)].x;
+    aloundLives += textureBufferIn[float2(preX,nowY)].x;
+    aloundLives += textureBufferIn[float2(preX,postY)].x;
+    aloundLives += textureBufferIn[float2(nowX,preY)].x;
+    aloundLives += textureBufferIn[float2(nowX,postY)].x;
+    aloundLives += textureBufferIn[float2(postX,preY)].x;
+    aloundLives += textureBufferIn[float2(postX,nowY)].x;
+    aloundLives += textureBufferIn[float2(postX,postY)].x;
+
+	nextGen = die;
+
+	if( ( (Float4Equals(nowGen,living) && (aloundLives == 2) ) || (aloundLives == 3) ) )
+	{
+		nextGen = living;
+	}
+    textureBufferOut[dispatchThreadID.xy] = nextGen;
+}
+
+// 画面更新
+[numthreads(8, 8, 1)]
+void FlipBuffer(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+	textureBufferIn[dispatchThreadID.xy] = textureBufferOut[dispatchThreadID.xy];
+}
